@@ -1,182 +1,9 @@
 #lang racket
 
 (require ffi/unsafe
-         ffi/unsafe/define
-         ffi/unsafe/alloc)
+         ffi/unsafe/define)
 
-(define-ffi-definer define-ts
-  (ffi-lib "/usr/lib/libtree-sitter" '(#f)))
-
-;; Types
-(define _TSParserRef (_cpointer 'TSParser))
-
-(define _TSTreeRef (_cpointer 'TSTree))
-
-(define _TSLanguageRef (_cpointer 'TSLanguage))
-
-(define _TSRangeRef (_cpointer 'TSRange))
-
-(define-cstruct _TSPoint ((row _uint32) (column _uint32)))
-
-(define _TSInputEncoding
-  (_enum '(TSInputEncodingUTF8 TSInputEncodingUTF16)))
-
-(define _TSLogType
-  (_enum '(TSLogTypeParse TSLogTypeLex)))
-
-(define-cstruct _TSInput
-  ((payload _pointer)
-   (read (_fun (payload byte-index position bytes-read) ::
-               (payload : _pointer)
-               (byte-index : _uint32)
-               (position : _TSPoint)
-               (bytes-read : _uint32)
-               -> _bytes))
-   (encoding _TSInputEncoding)))
-
-(define-cstruct _TSNode
-  ((context (_array _uint32 4))
-   (id _pointer)
-   (tree _TSTreeRef)))
-
-(define-cstruct _TSLogger
-  ((payload _pointer)
-   (log (_fun (payload typ message) ::
-              (payload : _pointer)
-              (typ : _TSLogType)
-              (message : _string)
-              -> _void))))
-
-;; Parser
-(define-ts parser-delete (_fun _TSParserRef -> _void)
-  #:c-id ts_parser_delete
-  #:wrap (deallocator))
-
-(define-ts parser-new (_fun -> _TSParserRef)
-  #:c-id ts_parser_new
-  #:wrap (allocator parser-delete))
-
-(define-ts parser-set-language (_fun _TSParserRef _TSLanguageRef -> _bool)
-  #:c-id ts_parser_set_language)
-
-(define-ts parser-get-language (_fun _TSParserRef -> _TSLanguageRef)
-  #:c-id ts_parser_language)
-
-(define-ts parser-set-included-ranges (_fun _TSParserRef _TSRangeRef _uint32 -> _bool)
-  #:c-id ts_parser_set_included_ranges)
-
-(define-ts parser-get-included-ranges (_fun _TSParserRef (_cpointer _uint32) -> _TSRangeRef)
-  #:c-id ts_parser_included_ranges)
-
-(define-ts parser-parse (_fun _TSParserRef _TSTreeRef _TSInput -> _TSTreeRef)
-  #:c-id ts_parser_parse)
-
-(define-ts parser-parse-string (_fun (parser old-tree source-code) ::
-                                     (parser : _TSParserRef)
-                                     (old-tree : (_cpointer/null 'TSTree))
-                                     (source-code : _string)
-                                     (_uint32 = (string-length source-code))
-                                     -> _TSTreeRef)
-  #:c-id ts_parser_parse_string)
-
-(define-ts parser-parse-string-encoding (_fun (parser old-tree source-code encoding) ::
-                                              (parser : _TSParserRef)
-                                              (old-tree : (_cpointer/null 'TSTree))
-                                              (source-code : _string)
-                                              (_uint32 = (string-length source-code))
-                                              (encoding : _TSInputEncoding)
-                                              -> _TSTreeRef)
-  #:c-id ts_parser_parse_string_encoding)
-
-(define-ts parser-reset (_fun _TSParserRef -> _void)
-  #:c-id ts_parser_reset)
-
-(define-ts parser-set-timeout-micros (_fun _TSParserRef _uint64 -> _void)
-  #:c-id ts_parser_set_timeout_micros)
-
-(define-ts parser-get-timeout-micros (_fun _TSParserRef -> _uint64)
-  #:c-id ts_parser_timeout_micros)
-
-(define-ts parser-set-cancellation-flag (_fun _TSParserRef (_cpointer _size) -> _void)
-  #:c-id ts_parser_set_cancellation_flag)
-
-(define-ts parser-get-cancellation-flag (_fun _TSParserRef -> (_cpointer _size))
-  #:c-id ts_parser_cancellation_flag)
-
-(define-ts parser-set-logger (_fun _TSParserRef _TSLogger -> _void)
-  #:c-id ts_parser_set_logger)
-
-(define-ts parser-get-logger (_fun _TSParserRef -> _TSLogger)
-  #:c-id ts_parser_logger)
-
-(define-ts parser-print-dot-graphs (_fun (parser file-descriptor) ::
-                                         (parser : _TSParserRef)
-                                         (file-descriptor : _int)
-                                         -> _void)
-  #:c-id ts_parser_print_dot_graphs)
-
-;; Tree
-(define-ts tree-delete (_fun _TSTreeRef -> _void)
-  #:c-id ts_tree_delete
-  #:wrap (deallocator))
-
-(define-ts tree-language (_fun _TSTreeRef -> _TSLanguageRef)
-  #:c-id ts_tree_language)
-
-(define-ts tree-copy (_fun _TSTreeRef -> _TSTreeRef)
-  #:c-id ts_tree_copy)
-
-(define-ts tree-root-node (_fun _TSTreeRef -> _TSNode)
-  #:c-id ts_tree_root_node)
-
-;; Node
-(define-ts node-type (_fun _TSNode -> _string)
-  #:c-id ts_node_type)
-
-(define-ts node->string (_fun _TSNode -> _string)
-  #:c-id ts_node_string)
-
-(define-ts node-child-count (_fun _TSNode -> _uint32)
-  #:c-id ts_node_child_count)
-
-(define-ts node-child (_fun _TSNode _uint32 -> _TSNode)
-  #:c-id ts_node_child)
-
-(define-ts node-next-sibling (_fun _TSNode -> _TSNode)
-  #:c-id ts_node_next_sibling)
-
-(define-ts node-prev-sibling (_fun _TSNode -> _TSNode)
-  #:c-id ts_node_prev_sibling)
-
-(define-ts node-named-child-count (_fun _TSNode -> _uint32)
-  #:c-id ts_node_named_child_count)
-
-(define-ts node-named-child (_fun _TSNode _uint32 -> _TSNode)
-  #:c-id ts_node_named_child)
-
-(define-ts node-next-named-sibling (_fun _TSNode -> _TSNode)
-  #:c-id ts_node_next_named_sibling)
-
-(define-ts node-prev-named-sibling (_fun _TSNode -> _TSNode)
-  #:c-id ts_node_prev_named_sibling)
-
-(define-ts node-parent (_fun _TSNode -> _TSNode)
-  #:c-id ts_node_parent)
-
-(define-ts node-is-null (_fun _TSNode -> _bool)
-  #:c-id ts_node_is_null)
-
-(define-ts node-is-named (_fun _TSNode -> _bool)
-  #:c-id ts_node_is_named)
-
-(define-ts node-child-by-field-name (_fun _TSNode _string _uint32 -> _TSNode)
-  #:c-id ts_node_child_by_field_name)
-
-(define-ts node-start-byte (_fun _TSNode -> _uint32)
-  #:c-id ts_node_start_byte)
-
-(define-ts node-end-byte (_fun _TSNode -> _uint32)
-  #:c-id ts_node_end_byte)
+(require "tree-sitter.rkt")
 
 ;; Language def
 (define-ffi-definer define-lang
@@ -188,7 +15,7 @@
 (define p (parser-new))
 (parser-set-language p (test))
 
-(define (parse input)
+(define (parse-ts input)
   (define (translate node)
     (let ((t (node-type node)))
       (case t
@@ -222,4 +49,64 @@
          (cons t (node->string node))))))
   (translate (tree-root-node (parser-parse-string p #f input))))
 
-(pretty-print (time (parse (file->string "bench.rkt"))))
+(require "peggen.rkt")
+
+(generate-parser
+ (Sexps
+  (* Sexp)
+  (lambda (i r)
+    (map-match (lambda (m)
+                 (cons 'begin m))
+               r)))
+ (Sexp
+  (/ Quote List String Atom))
+ (Quote
+  (Spacing  "'" Sexp)
+  (lambda (i r)
+    (map-match (lambda (m)
+                 (list 'quote (caddr m)))
+               r)))
+ (List
+  (Spacing "(" (* Sexp) ")")
+  (lambda (i r)
+    (map-match caddr r)))
+ (String
+  (Spacing "\"" "[^\"]*" "\"")
+  (lambda (i r)
+    (map-match caddr r)))
+ (Atom
+  (/ Number Symbol))
+ (Number
+  (Spacing "[0-9]+(\\.[0-9]+)?")
+  (lambda (i r)
+    (map-match (lambda (m)
+                  (string->number (cadr m)))
+                r)))
+ (Symbol
+  (Spacing "[_@#a-zA-Z0-9\xC0-\xD6\xD8-\xDE\xDF-\xF6\xF8-\xFF:=><+*/?!^-]+")
+  (lambda (i r)
+    (map-match (lambda (m)
+                 (string->symbol (cadr m)))
+               r)))
+ (Spacing
+  (* (/ "[ \t\v\r\n]+" Comment))
+  noop)
+ (Comment
+  ";[^\n]*"))
+
+(define (parse-pg input)
+  (match-match (Sexps input)))
+
+(define input (let ((i (file->string "test.rkt"))
+                    (size 20))
+                (let loop ((acc i)
+                           (s 0))
+                  (if (= s size)
+                      acc
+                      (loop (string-append acc i)
+                            (+ s 1))))))
+
+(define ts (time (parse-ts input)))
+(define pg (time (parse-pg input)))
+
+(displayln (equal? ts pg))

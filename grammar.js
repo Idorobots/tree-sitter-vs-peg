@@ -8,10 +8,10 @@ module.exports = grammar({
 
     quote: ($) => seq("'", $._sexp),
     list: ($) => seq('(', repeat($._sexp), ')'),
-    string: ($) => seq('"', field('value', /[^"]*/), '"'),
+    string: ($) => seq('"',  /[^"]*/, '"'),
     _atom: ($) => choice($.number, $.symbol),
     number: ($) => /[0-9]+(\.[0-9]+)?/,
-    symbol: ($) => /[_@#a-zA-Z0-9\xC0-\xD6\xD8-\xDE\xDF-\xF6\xF8-\xFF:=><+*-\/]+/,
+    symbol: ($) => /[_@#a-zA-Z0-9\xC0-\xD6\xD8-\xDE\xDF-\xF6\xF8-\xFF:=><+*\/?!^-]+/,
     _comment: ($) => token(seq(';', /[^\n]*/)),
   },
 

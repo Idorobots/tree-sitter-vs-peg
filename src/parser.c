@@ -12,9 +12,9 @@
 #define ALIAS_COUNT 0
 #define TOKEN_COUNT 9
 #define EXTERNAL_TOKEN_COUNT 0
-#define FIELD_COUNT 1
+#define FIELD_COUNT 0
 #define MAX_ALIAS_SEQUENCE_LENGTH 3
-#define PRODUCTION_ID_COUNT 2
+#define PRODUCTION_ID_COUNT 1
 
 enum {
   anon_sym_SQUOTE = 1,
@@ -139,24 +139,6 @@ static const TSSymbolMetadata ts_symbol_metadata[] = {
   },
 };
 
-enum {
-  field_value = 1,
-};
-
-static const char * const ts_field_names[] = {
-  [0] = NULL,
-  [field_value] = "value",
-};
-
-static const TSFieldMapSlice ts_field_map_slices[PRODUCTION_ID_COUNT] = {
-  [1] = {.index = 0, .length = 1},
-};
-
-static const TSFieldMapEntry ts_field_map_entries[] = {
-  [0] =
-    {field_value, 1},
-};
-
 static const TSSymbol ts_alias_sequences[PRODUCTION_ID_COUNT][MAX_ALIAS_SEQUENCE_LENGTH] = {
   [0] = {0},
 };
@@ -166,12 +148,12 @@ static const uint16_t ts_non_terminal_alias_map[] = {
 };
 
 static inline bool sym_symbol_character_set_1(int32_t c) {
-  return (c < '_'
-    ? (c < '<'
-      ? (c < '*'
-        ? c == '#'
-        : c <= ':')
-      : (c <= '>' || (c >= '@' && c <= 'Z')))
+  return (c < '^'
+    ? (c < '*'
+      ? (c < '#'
+        ? c == '!'
+        : c <= '#')
+      : (c <= ':' || (c >= '<' && c <= 'Z')))
     : (c <= '_' || (c < 216
       ? (c < 192
         ? (c >= 'a' && c <= 'z')
@@ -195,9 +177,9 @@ static bool ts_lex(TSLexer *lexer, TSStateId state) {
           lookahead == '\r' ||
           lookahead == ' ') SKIP(0)
       if (('0' <= lookahead && lookahead <= '9')) ADVANCE(9);
-      if (lookahead == '#' ||
-          ('*' <= lookahead && lookahead <= '>') ||
-          ('@' <= lookahead && lookahead <= 'Z') ||
+      if (('!' <= lookahead && lookahead <= '#') ||
+          ('*' <= lookahead && lookahead <= 'Z') ||
+          lookahead == '^' ||
           lookahead == '_' ||
           ('a' <= lookahead && lookahead <= 'z') ||
           (192 <= lookahead && lookahead <= 214) ||
@@ -492,8 +474,8 @@ static const TSParseActionEntry ts_parse_actions[] = {
   [47] = {.entry = {.count = 1, .reusable = false}}, REDUCE(sym_list, 2),
   [49] = {.entry = {.count = 1, .reusable = true}}, REDUCE(sym_list, 3),
   [51] = {.entry = {.count = 1, .reusable = false}}, REDUCE(sym_list, 3),
-  [53] = {.entry = {.count = 1, .reusable = true}}, REDUCE(sym_string, 3, .production_id = 1),
-  [55] = {.entry = {.count = 1, .reusable = false}}, REDUCE(sym_string, 3, .production_id = 1),
+  [53] = {.entry = {.count = 1, .reusable = true}}, REDUCE(sym_string, 3),
+  [55] = {.entry = {.count = 1, .reusable = false}}, REDUCE(sym_string, 3),
   [57] = {.entry = {.count = 1, .reusable = false}}, SHIFT(13),
   [59] = {.entry = {.count = 1, .reusable = false}}, SHIFT_EXTRA(),
   [61] = {.entry = {.count = 1, .reusable = true}},  ACCEPT_INPUT(),
@@ -524,9 +506,6 @@ extern const TSLanguage *tree_sitter_test(void) {
     .small_parse_table_map = ts_small_parse_table_map,
     .parse_actions = ts_parse_actions,
     .symbol_names = ts_symbol_names,
-    .field_names = ts_field_names,
-    .field_map_slices = ts_field_map_slices,
-    .field_map_entries = ts_field_map_entries,
     .symbol_metadata = ts_symbol_metadata,
     .public_symbol_map = ts_symbol_map,
     .alias_map = ts_non_terminal_alias_map,
