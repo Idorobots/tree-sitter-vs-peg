@@ -98,7 +98,7 @@
     },
     "symbol": {
       "type": "PATTERN",
-      "value": "[_@#a-zA-Z0-9\\xC0-\\xD6\\xD8-\\xDE\\xDF-\\xF6\\xF8-\\xFF:=><+*-\\/?!^]+"
+      "value": "[_@#a-zA-Z0-9\\xC0-\\xD6\\xD8-\\xDE\\xDF-\\xF6\\xF8-\\xFF:=><+*\\/?!^-]+"
     },
     "_comment": {
       "type": "TOKEN",

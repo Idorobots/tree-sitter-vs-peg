@@ -1,7 +1,7 @@
 CC = gcc
 RM = rm
 TS = tree-sitter
-CFLAGS = -I src/ -std=c99 -pedantic -Wall -O2 -fPIC
+CFLAGS = -I src/ -std=c99 -pedantic -O3 -ffast-math -fPIC
 LDFLAGS =
 LDLIBS = 
 
