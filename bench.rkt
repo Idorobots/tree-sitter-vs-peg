@@ -204,12 +204,14 @@
          (substring input
                     (+ (node-start-byte node) 1)
                     (- (node-end-byte node) 1)))
-        (("atom")
+        (("symbol")
          (string->symbol (substring input (node-start-byte node) (node-end-byte node))))
+        (("number")
+         (string->number (substring input (node-start-byte node) (node-end-byte node))))
         (("test")
          (translate (node-child node 0)))
         (else
-         'todo))))
+         (node->string node)))))
   (translate (tree-root-node (parser-parse-string p #f input))))
 
-(pretty-print (parse "(hello (\"world\"))"))
+(pretty-print (parse "(hello (\"world\") 23)"))

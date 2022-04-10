@@ -1,5 +1,6 @@
 CC = gcc
 RM = rm
+TS = tree-sitter
 CFLAGS = -I src/ -std=c99 -pedantic -Wall -O2 -fPIC
 LDFLAGS =
 LDLIBS = 
@@ -16,6 +17,9 @@ $(TARGET): $(OBJS)
 
 %.o: %.c
 	$(CC) $(CFLAGS) $^ -c $@
+
+src/parser.c: grammar.js
+	$(TS) generate --no-bindings
 
 clean :
 	$(RM) $(TARGET)
