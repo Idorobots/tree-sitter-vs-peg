@@ -1,7 +1,7 @@
 {
   "name": "test",
   "rules": {
-    "test": {
+    "sexps": {
       "type": "REPEAT",
       "content": {
         "type": "SYMBOL",
@@ -13,6 +13,10 @@
       "members": [
         {
           "type": "SYMBOL",
+          "name": "quote"
+        },
+        {
+          "type": "SYMBOL",
           "name": "list"
         },
         {
@@ -22,6 +26,19 @@
         {
           "type": "SYMBOL",
           "name": "_atom"
+        }
+      ]
+    },
+    "quote": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "'"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_sexp"
         }
       ]
     },
@@ -85,10 +102,30 @@
     },
     "symbol": {
       "type": "PATTERN",
-      "value": "[_@#a-zA-Z0-9\\xC0-\\xD6\\xD8-\\xDE\\xDF-\\xF6\\xF8-\\xFF:-]+"
+      "value": "[_@#a-zA-Z0-9\\xC0-\\xD6\\xD8-\\xDE\\xDF-\\xF6\\xF8-\\xFF:=><+*-\\/]+"
+    },
+    "_comment": {
+      "type": "TOKEN",
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "STRING",
+            "value": ";"
+          },
+          {
+            "type": "PATTERN",
+            "value": "[^\\n]*"
+          }
+        ]
+      }
     }
   },
   "extras": [
+    {
+      "type": "SYMBOL",
+      "name": "_comment"
+    },
     {
       "type": "PATTERN",
       "value": "\\s"

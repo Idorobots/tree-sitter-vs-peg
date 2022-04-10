@@ -16,7 +16,7 @@
 
 (define _TSRangeRef (_cpointer 'TSRange))
 
-(define-cstruct _TSPoint ([row _uint32] [column _uint32]))
+(define-cstruct _TSPoint ((row _uint32) (column _uint32)))
 
 (define _TSInputEncoding
   (_enum '(TSInputEncodingUTF8 TSInputEncodingUTF16)))
@@ -25,27 +25,27 @@
   (_enum '(TSLogTypeParse TSLogTypeLex)))
 
 (define-cstruct _TSInput
-  ([payload _pointer]
-   [read (_fun (payload byte-index position bytes-read) ::
+  ((payload _pointer)
+   (read (_fun (payload byte-index position bytes-read) ::
                (payload : _pointer)
                (byte-index : _uint32)
                (position : _TSPoint)
                (bytes-read : _uint32)
-               -> _bytes)]
-   [encoding _TSInputEncoding]))
+               -> _bytes))
+   (encoding _TSInputEncoding)))
 
 (define-cstruct _TSNode
-  ([context (_array _uint32 4)]
-   [id _pointer]
-   [tree _TSTreeRef]))
+  ((context (_array _uint32 4))
+   (id _pointer)
+   (tree _TSTreeRef)))
 
 (define-cstruct _TSLogger
-  ([payload _pointer]
-   [log (_fun (payload typ message) ::
+  ((payload _pointer)
+   (log (_fun (payload typ message) ::
               (payload : _pointer)
               (typ : _TSLogType)
               (message : _string)
-              -> _void)]))
+              -> _void))))
 
 ;; Parser
 (define-ts parser-delete (_fun _TSParserRef -> _void)
@@ -192,6 +192,16 @@
   (define (translate node)
     (let ((t (node-type node)))
       (case t
+        (("sexps")
+         (let loop ((i (node-child-count node))
+                    (acc '()))
+           (if (= i 0)
+               (cons 'begin acc)
+               (loop (- i 1)
+                     (cons (translate (node-child node (- i 1)))
+                           acc)))))
+        (("quote")
+         (list 'quote (translate (node-child node 1))))
         (("list")
          (let loop ((i (node-named-child-count node))
                     (acc '()))
@@ -208,10 +218,8 @@
          (string->symbol (substring input (node-start-byte node) (node-end-byte node))))
         (("number")
          (string->number (substring input (node-start-byte node) (node-end-byte node))))
-        (("test")
-         (translate (node-child node 0)))
         (else
-         (node->string node)))))
+         (cons t (node->string node))))))
   (translate (tree-root-node (parser-parse-string p #f input))))
 
-(pretty-print (parse "(hello (\"world\") 23)"))
+(pretty-print (time (parse (file->string "bench.rkt"))))
