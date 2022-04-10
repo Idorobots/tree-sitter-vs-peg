@@ -106,7 +106,11 @@
                       (loop (string-append acc i)
                             (+ s 1))))))
 
+(display "TreeSitter:    ")
 (define ts (time (parse-ts input)))
+
+(display "PEG generator: ")
 (define pg (time (parse-pg input)))
 
-(displayln (equal? ts pg))
+(unless (equal? ts pg)
+  (error "Results weren't the same!"))
