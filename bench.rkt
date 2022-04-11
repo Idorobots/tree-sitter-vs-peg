@@ -103,22 +103,72 @@
   ";[^\n]*"))
 
 (define (parse-pg input)
-  (match-match (Sexps input)))
+  (let ((result (Sexps input)))
+    (if (matches? result)
+        (match-match result)
+        (error "Parser did not parse the file."))))
 
-(define input (let ((i (file->string "test.rkt"))
-                    (size 20))
-                (let loop ((acc i)
-                           (s 0))
-                  (if (= s size)
-                      acc
-                      (loop (string-append acc i)
-                            (+ s 1))))))
+;; Benchmark
 
-(display "TreeSitter:    ")
-(define ts (time (parse-ts input)))
+(define (input filename duplicates)
+  (let ((i (file->string filename)))
+    (let loop ((acc "")
+               (s 0))
+      (if (= s duplicates)
+          acc
+          (loop (string-append acc i)
+                (+ s 1))))))
 
-(display "PEG generator: ")
-(define pg (time (parse-pg input)))
+(define (iota from to step)
+  (if (> from to)
+      '()
+      (cons from (iota (+ from step) to step))))
 
-(unless (equal? ts pg)
+(define (bench f filename sizes)
+  (map (lambda (s)
+         (let ((i (input filename s)))
+           (let-values (((_ cpu real gc)
+                         (time-apply (lambda ()
+                                       (f i))
+                                     '())))
+             (format "~ams" real))))
+       sizes))
+
+(require racket/format)
+
+(define (display-result result)
+  (map (lambda (i)
+         (display (~a i
+                      #:align 'right
+                      #:width 7)))
+       result)
+  (newline))
+
+(define (run-bench filename sizes)
+  (displayln (format "~a duplicated ~a times:" filename sizes))
+  (display "# lines:       ")
+  (display-result (let ((s (length (file->lines filename))))
+                    (map (lambda (i)
+                           (* s i))
+                         sizes)))
+
+  (display "TreeSitter:    ")
+  (display-result (bench parse-ts filename sizes))
+
+  (display "PEG generator: ")
+  (display-result (bench parse-pg filename sizes)))
+
+;; Sanity checks
+(unless (and (equal? (parse-ts "")
+                     (parse-pg ""))
+             (equal? (parse-ts "#lang test")
+                     (parse-pg "#lang test"))
+             (equal? (parse-ts (file->string "test/small.rkt"))
+                     (parse-pg (file->string "test/small.rkt")))
+             (equal? (parse-ts (file->string "test/large.rkt"))
+                     (parse-pg (file->string "test/large.rkt"))))
   (error "Results weren't the same!"))
+
+;; Actual benchmark
+(run-bench "test/small.rkt" (iota 0 1000 100))
+(run-bench "test/large.rkt" (iota 0 50 5))
