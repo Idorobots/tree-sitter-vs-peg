@@ -147,54 +147,6 @@ static const uint16_t ts_non_terminal_alias_map[] = {
   0,
 };
 
-static inline bool sym_symbol_character_set_1(int32_t c) {
-  return (c < '^'
-    ? (c < '-'
-      ? (c < '*'
-        ? (c >= '!' && c <= '#')
-        : c <= '+')
-      : (c <= '-' || (c >= '/' && c <= 'Z')))
-    : (c <= '_' || (c < 216
-      ? (c < 192
-        ? (c >= 'a' && c <= 'z')
-        : c <= 214)
-      : (c <= 246 || (c >= 248 && c <= 255)))));
-}
-
-static inline bool sym_symbol_character_set_2(int32_t c) {
-  return (c < '^'
-    ? (c < '*'
-      ? (c < '#'
-        ? c == '!'
-        : c <= '#')
-      : (c <= '+' || (c < '<'
-        ? (c >= '-' && c <= ':')
-        : c <= 'Z')))
-    : (c <= '_' || (c < 216
-      ? (c < 192
-        ? (c >= 'a' && c <= 'z')
-        : c <= 214)
-      : (c <= 246 || (c >= 248 && c <= 255)))));
-}
-
-static inline bool sym_symbol_character_set_3(int32_t c) {
-  return (c < '<'
-    ? (c < '*'
-      ? (c < '#'
-        ? c == '!'
-        : c <= '#')
-      : (c <= '+' || (c < '/'
-        ? c == '-'
-        : c <= ':')))
-    : (c <= 'Z' || (c < 192
-      ? (c < 'a'
-        ? (c >= '^' && c <= '_')
-        : c <= 'z')
-      : (c <= 214 || (c < 248
-        ? (c >= 216 && c <= 246)
-        : c <= 255)))));
-}
-
 static bool ts_lex(TSLexer *lexer, TSStateId state) {
   START_LEXER();
   eof = lexer->eof(lexer);
@@ -211,7 +163,14 @@ static bool ts_lex(TSLexer *lexer, TSStateId state) {
           lookahead == '\r' ||
           lookahead == ' ') SKIP(0)
       if (('0' <= lookahead && lookahead <= '9')) ADVANCE(10);
-      if (sym_symbol_character_set_1(lookahead)) ADVANCE(12);
+      if (('!' <= lookahead && lookahead <= '#') ||
+          lookahead == '*' ||
+          lookahead == '+' ||
+          lookahead == '-' ||
+          ('/' <= lookahead && lookahead <= 'Z') ||
+          lookahead == '^' ||
+          lookahead == '_' ||
+          ('a' <= lookahead && lookahead <= 'z')) ADVANCE(12);
       END_STATE();
     case 1:
       if (('0' <= lookahead && lookahead <= '9')) ADVANCE(11);
@@ -256,7 +215,15 @@ static bool ts_lex(TSLexer *lexer, TSStateId state) {
       ACCEPT_TOKEN(sym_number);
       if (lookahead == '.') ADVANCE(1);
       if (('0' <= lookahead && lookahead <= '9')) ADVANCE(10);
-      if (sym_symbol_character_set_2(lookahead)) ADVANCE(12);
+      if (lookahead == '!' ||
+          lookahead == '#' ||
+          lookahead == '*' ||
+          lookahead == '+' ||
+          ('-' <= lookahead && lookahead <= ':') ||
+          ('<' <= lookahead && lookahead <= 'Z') ||
+          lookahead == '^' ||
+          lookahead == '_' ||
+          ('a' <= lookahead && lookahead <= 'z')) ADVANCE(12);
       END_STATE();
     case 11:
       ACCEPT_TOKEN(sym_number);
@@ -264,7 +231,16 @@ static bool ts_lex(TSLexer *lexer, TSStateId state) {
       END_STATE();
     case 12:
       ACCEPT_TOKEN(sym_symbol);
-      if (sym_symbol_character_set_3(lookahead)) ADVANCE(12);
+      if (lookahead == '!' ||
+          lookahead == '#' ||
+          lookahead == '*' ||
+          lookahead == '+' ||
+          lookahead == '-' ||
+          ('/' <= lookahead && lookahead <= ':') ||
+          ('<' <= lookahead && lookahead <= 'Z') ||
+          lookahead == '^' ||
+          lookahead == '_' ||
+          ('a' <= lookahead && lookahead <= 'z')) ADVANCE(12);
       END_STATE();
     case 13:
       ACCEPT_TOKEN(sym__comment);

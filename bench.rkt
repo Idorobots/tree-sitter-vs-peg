@@ -50,6 +50,14 @@
   (translate (tree-root-node (parser-parse-string p #f input))))
 
 (require "peggen.rkt")
+(require (for-syntax "peggen.rkt"))
+
+(define-syntax (generate-parser stx)
+  (syntax-case stx ()
+    ((generate-parser rules ...)
+     (datum->syntax stx
+                    (generate-grammar
+                     (syntax->datum #'(rules ...)))))))
 
 (generate-parser
  (Sexps
@@ -83,7 +91,7 @@
                   (string->number (cadr m)))
                 r)))
  (Symbol
-  (Spacing "[_@#a-zA-Z0-9\xC0-\xD6\xD8-\xDE\xDF-\xF6\xF8-\xFF:=><+*/?!^-]+")
+  (Spacing "[_@#a-zA-Z0-9:=><+*/?!^-]+")
   (lambda (i r)
     (map-match (lambda (m)
                  (string->symbol (cadr m)))

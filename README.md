@@ -12,8 +12,9 @@ $ racket -t bench.rkt
 Here are the results:
 
 ```
-TreeSitter:    cpu time: 182 real time: 182 gc time: 62
-PEG generator: cpu time: 689 real time: 690 gc time: 206
+TreeSitter:    cpu time: 195 real time: 195 gc time: 63
+PEG generator: cpu time: 634 real time: 636 gc time: 210
+
 ```
 
 The Racket-defined parser generator is about 3-4 times slower than natively-compiled TreeSitter parser and is considerably heavier on the GC as TreeSitter manages its own memory for the AST nodes.
