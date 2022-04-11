@@ -1,11 +1,19 @@
 #lang racket
 
+;; Simple, basic AST used in the benchmark.
+(struct ast-sequence (exprs start end) #:transparent)
+(struct ast-quote (expr start end) #:transparent)
+(struct ast-list (value start end) #:transparent)
+(struct ast-string (value start end) #:transparent)
+(struct ast-symbol (value start end) #:transparent)
+(struct ast-number (value start end) #:transparent)
+
+;; Tree Sitter
 (require ffi/unsafe
          ffi/unsafe/define)
 
 (require "tree-sitter.rkt")
 
-;; Language def
 (define-ffi-definer define-lang
   (ffi-lib "./test" '(#f)))
 
@@ -23,30 +31,42 @@
          (let loop ((i (node-child-count node))
                     (acc '()))
            (if (= i 0)
-               (cons 'begin acc)
+               (ast-sequence acc
+                             (node-start-byte node)
+                             (node-end-byte node))
                (loop (- i 1)
                      (cons (translate (node-child node (- i 1)))
                            acc)))))
         (("quote")
-         (list 'quote (translate (node-child node 1))))
+         (ast-quote (translate (node-child node 1))
+                    (node-start-byte node)
+                    (node-end-byte node)))
         (("list")
          (let loop ((i (node-named-child-count node))
                     (acc '()))
            (if (= i 0)
-               acc
+               (ast-list acc
+                         (node-start-byte node)
+                         (node-end-byte node))
                (loop (- i 1)
                      (cons (translate (node-named-child node (- i 1)))
                            acc)))))
         (("string")
-         (substring input
-                    (+ (node-start-byte node) 1)
-                    (- (node-end-byte node) 1)))
+         (ast-string (substring input
+                                (+ (node-start-byte node) 1)
+                                (- (node-end-byte node) 1))
+                     (node-start-byte node)
+                     (node-end-byte node)))
         (("symbol")
-         (string->symbol (substring input (node-start-byte node) (node-end-byte node))))
+         (ast-symbol (string->symbol (substring input (node-start-byte node) (node-end-byte node)))
+                     (node-start-byte node)
+                     (node-end-byte node)))
         (("number")
-         (string->number (substring input (node-start-byte node) (node-end-byte node))))
+         (ast-number (string->number (substring input (node-start-byte node) (node-end-byte node)))
+                     (node-start-byte node)
+                     (node-end-byte node)))
         (else
-         (cons t (node->string node))))))
+         (error "Parser did not parse the file correctly.")))))
   (translate (tree-root-node (parser-parse-string p #f input))))
 
 (require "peggen.rkt")
@@ -61,10 +81,12 @@
 
 (generate-parser
  (Sexps
-  (* Sexp)
+  ((* Sexp) Spacing)
   (lambda (i r)
     (map-match (lambda (m)
-                 (cons 'begin m))
+                 (ast-sequence (car m)
+                               (match-start r)
+                               (match-end r)))
                r)))
  (Sexp
   (/ Quote List String Atom))
@@ -72,32 +94,46 @@
   (Spacing  "'" Sexp)
   (lambda (i r)
     (map-match (lambda (m)
-                 (list 'quote (caddr m)))
+                 (ast-quote (caddr m)
+                            (match-start r)
+                            (match-end r)))
                r)))
  (List
-  (Spacing "(" (* Sexp) ")")
+  (Spacing "(" (* Sexp) Spacing ")")
   (lambda (i r)
-    (map-match caddr r)))
+    (map-match (lambda (m)
+                 (ast-list (caddr m)
+                           (match-start r)
+                           (match-end r)))
+               r)))
  (String
   (Spacing "\"" "[^\"]*" "\"")
   (lambda (i r)
-    (map-match caddr r)))
+    (map-match (lambda (m)
+                 (ast-string (caddr m)
+                             (match-start r)
+                             (match-end r)))
+               r)))
  (Atom
   (/ Number Symbol))
  (Number
   (Spacing "[0-9]+(\\.[0-9]+)?")
   (lambda (i r)
     (map-match (lambda (m)
-                  (string->number (cadr m)))
-                r)))
+                 (ast-number (string->number (cadr m))
+                             (match-start r)
+                             (match-end r)))
+               r)))
  (Symbol
   (Spacing "[_@#a-zA-Z0-9:=><+*/?!^-]+")
   (lambda (i r)
     (map-match (lambda (m)
-                 (string->symbol (cadr m)))
+                 (ast-symbol (string->symbol (cadr m))
+                             (match-start r)
+                             (match-end r)))
                r)))
  (Spacing
-  (* (/ "[ \t\v\r\n]+" Comment))
+  (: (* (/ "[ \t\v\r\n]+" Comment)))
   noop)
  (Comment
   ";[^\n]*"))
@@ -106,7 +142,7 @@
   (let ((result (Sexps input)))
     (if (matches? result)
         (match-match result)
-        (error "Parser did not parse the file."))))
+        (error "Parser did not parse the file correctly."))))
 
 ;; Benchmark
 
@@ -159,16 +195,36 @@
   (display-result (bench parse-pg filename sizes)))
 
 ;; Sanity checks
-(unless (and (equal? (parse-ts "")
-                     (parse-pg ""))
-             (equal? (parse-ts "#lang test")
-                     (parse-pg "#lang test"))
-             (equal? (parse-ts (file->string "test/small.rkt"))
-                     (parse-pg (file->string "test/small.rkt")))
-             (equal? (parse-ts (file->string "test/large.rkt"))
-                     (parse-pg (file->string "test/large.rkt"))))
-  (error "Results weren't the same!"))
+(define (check-equal? a b)
+  (unless (equal? a b)
+    (with-output-to-file "/tmp/a.txt"
+      (lambda ()
+        (pretty-print a))
+      #:exists 'replace)
+    (with-output-to-file "/tmp/b.txt"
+      (lambda ()
+        (pretty-print b))
+      #:exists 'replace)
+    (error "Results weren't the same!")))
+
+(check-equal? (parse-ts "")
+              (parse-pg ""))
+
+(check-equal? (parse-ts "#lang test")
+              (parse-pg "#lang test"))
+
+(check-equal? (parse-ts (file->string "test/nodes.rkt"))
+              (parse-pg (file->string "test/nodes.rkt")))
+
+(check-equal? (parse-ts (file->string "test/small.rkt"))
+              (parse-pg (file->string "test/small.rkt")))
+
+(check-equal? (parse-ts (file->string "test/large.rkt"))
+              (parse-pg (file->string "test/large.rkt")))
 
 ;; Actual benchmark
+(run-bench "test/nodes.rkt" (iota 0 5000 500))
+(newline)
 (run-bench "test/small.rkt" (iota 0 1000 100))
+(newline)
 (run-bench "test/large.rkt" (iota 0 50 5))
